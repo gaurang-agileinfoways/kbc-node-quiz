@@ -8,10 +8,13 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { QuizService } from 'src/quiz/quiz.service';
-import { clearInterval } from 'timers';
 import { SocketAuthMiddleware } from './ws.middleware';
 
-@WebSocketGateway(3001)
+@WebSocketGateway(3001, {
+  cors: {
+    origin: '*',
+  },
+})
 export class QuizGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -19,11 +22,15 @@ export class QuizGateway
   @WebSocketServer()
   server: Server;
 
-  interval: NodeJS.Timeout;
+  private static userTimers: Map<string, NodeJS.Timeout> = new Map();
 
   afterInit(server: Server) {
     console.log('WebSocket server initialized');
-    server.use(SocketAuthMiddleware());
+    try {
+      server.use(SocketAuthMiddleware());
+    } catch (error) {
+      server.close(error);
+    }
   }
 
   handleConnection(client: Socket, ...args: any[]) {
@@ -34,26 +41,49 @@ export class QuizGateway
     console.log('Client disconnected:', client.id);
   }
 
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: any): string {
-    console.log('Message received:', payload);
-    this.server.emit('event', 'event emited');
-    return 'Hello from server';
+  @SubscribeMessage('get-question')
+  async assignQuestions(client: Socket) {
+    console.log('get-question: 1');
+    const question: any = await this.quizService.generateQuestion(
+      client?.data?.user,
+    );
+
+    this.server.to(client.id).emit('question', question);
+
+    const timer = setTimeout(() => {
+      this.handleTimeout(client);
+    }, 1000 * 60);
+    QuizGateway.userTimers.set(client.id, timer);
   }
 
-  @SubscribeMessage('get-question')
-  assignQuestions(client: Socket, payload: any) {
-    if (!this.interval) {
-      this.interval = setInterval(() => {
-        this.server.emit('event', 'event listening');
-      }, 1000 * 60);
-    }
+  @SubscribeMessage('submit-answer')
+  async submitAnswer(client: Socket, payload: any) {
+    console.log('payload: ', payload);
+    const answer: any = await this.quizService.checkAnswer(
+      payload,
+      client?.data?.user,
+    );
 
-    if (payload.trim() === 'close') {
-      clearInterval(this.interval);
-      this.interval = null;
-    } else {
-      this.server.emit('event', 'event emitted');
+    if (!answer.isCorrect) {
+      this.server.to(client.id).emit('answer', JSON.stringify(answer));
+      this.clearUserTimer(client.id);
+      client.disconnect(true);
+    }
+    this.clearUserTimer(client.id);
+    this.server.to(client.id).emit('answer', JSON.stringify(answer));
+  }
+
+  private handleTimeout(client: Socket) {
+    this.quizService.updateQuizStatus(client);
+    this.server.to(client.id).emit('error', 'YOur time is out brother!!');
+    client.disconnect(true);
+  }
+
+  private clearUserTimer(clientId: string) {
+    const timer = QuizGateway.userTimers.get(clientId);
+    if (timer) {
+      clearTimeout(timer);
+      QuizGateway.userTimers.delete(clientId);
     }
   }
 }

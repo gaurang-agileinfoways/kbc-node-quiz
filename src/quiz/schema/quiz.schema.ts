@@ -15,11 +15,14 @@ export class Quiz {
   @Prop({ required: true, default: 0 })
   winAmount: number;
 
+  @Prop({ required: true, default: 0 })
+  currentLevel: number;
+
   @Prop({
     required: true,
     type: [
       {
-        questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
+        questionId: { type: mongoose.Types.ObjectId, ref: 'Question' },
         questionStatus: { type: String, enum: Object.values(QuestionStatus) },
       },
     ],
@@ -30,7 +33,7 @@ export class Quiz {
 
 export const QuizSchema = SchemaFactory.createForClass(Quiz);
 
-interface Questions {
-  questionId: mongoose.Schema.Types.ObjectId;
+export interface Questions {
+  questionId: mongoose.Types.ObjectId;
   questionStatus: QuestionStatus;
 }

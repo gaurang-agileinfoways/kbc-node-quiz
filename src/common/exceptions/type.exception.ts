@@ -9,4 +9,11 @@ export const TypeExceptions = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
     });
   },
+  OnlyOneQuizCanStart() {
+    return new RpcException({
+      message: 'Only one quiz can run at time.',
+      error: 'OnlyOneQuizCanStart',
+      statusCode: HttpStatus.NOT_ACCEPTABLE,
+    });
+  },
 };

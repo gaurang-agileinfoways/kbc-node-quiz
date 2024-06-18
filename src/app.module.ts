@@ -7,6 +7,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { GlobalExceptionFilter } from './common/exceptions/rpc-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { GatewayModule } from './gateway/gateway.module';
+import { WebsocketExceptionsFilter } from './common/exceptions/ws-exception.filter';
 
 @Module({
   imports: [
@@ -24,6 +25,10 @@ import { GatewayModule } from './gateway/gateway.module';
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: WebsocketExceptionsFilter,
     },
     {
       provide: APP_INTERCEPTOR,

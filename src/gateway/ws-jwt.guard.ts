@@ -15,20 +15,21 @@ export class JwtAuthGuard implements CanActivate {
       return false;
     }
 
-    console.log('In auth return');
     return true;
   }
 
-  static validateToken(client: Socket) {
+  static async validateToken(client: Socket) {
     const { authorization } = client.handshake.headers;
-    console.log('authorization: ', authorization);
-    const token = authorization.split(' ')[1];
-    console.log('token: ', token);
+    const token = authorization?.split(' ')[1];
+
     if (!token) {
       return false;
     }
-    const data = verify(token, 'jwt-secret-key');
-    console.log('data: ', data);
-    return data;
+    try {
+      const data = verify(token, 'jwt-secret-key');
+      return data;
+    } catch (error) {
+      return false;
+    }
   }
 }
