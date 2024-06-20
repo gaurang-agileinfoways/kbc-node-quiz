@@ -69,8 +69,13 @@ export class QuizGateway
       this.clearUserTimer(client.id);
       client.disconnect(true);
     }
+
     this.clearUserTimer(client.id);
     this.server.to(client.id).emit('answer', JSON.stringify(answer));
+
+    if (answer.currentLevel >= 10) {
+      this.server.to(client.id).emit('win', JSON.stringify(answer));
+    }
   }
 
   private handleTimeout(client: Socket) {

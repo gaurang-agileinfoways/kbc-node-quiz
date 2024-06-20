@@ -9,9 +9,11 @@ import { firstValueFrom } from 'rxjs';
 import {
   GET_BY_ID,
   GET_RANDOM_QUESTION,
+  GET_SELECTED_USER_BY_ID,
   GET_SINGLE_QUESTION,
 } from 'src/common/constants/success-response.constant';
 import { WsException } from '@nestjs/websockets';
+import { endOfDay, startOfDay } from 'date-fns';
 
 @Injectable()
 export class QuizService {
@@ -72,10 +74,11 @@ export class QuizService {
         throw new WsException('No any active quiz found.');
       }
 
-      const askedQuestions = validate.questions.map((que) => que.questionId);
+      const questions = validate.questions.map((que) => que.questionId);
+      console.log('askedQuestions: ', questions);
 
       const resp = await firstValueFrom(
-        this.queClient.send(GET_RANDOM_QUESTION, { askedQuestions }),
+        this.queClient.send(GET_RANDOM_QUESTION, { questions }),
       );
 
       return {
@@ -85,6 +88,7 @@ export class QuizService {
         time: 60,
       };
     } catch (error) {
+      console.log('error: ', error);
       throw error;
     }
   }
@@ -129,11 +133,14 @@ export class QuizService {
         storeData['winAmount'] = data.winAmount * 10;
       }
 
-      if (queData.questionStatus === QuestionStatus.WRONG) {
+      if (
+        queData.questionStatus === QuestionStatus.WRONG ||
+        storeData.currentLevel >= 10
+      ) {
         storeData['status'] = Status.COMPLETED;
       }
 
-      await this.quizModel.findOneAndUpdate(
+      const quizData = await this.quizModel.findOneAndUpdate(
         {
           _id: data._id,
           userId: dbuser.id,
@@ -143,6 +150,8 @@ export class QuizService {
       );
 
       return {
+        currentLevel: quizData.currentLevel + 1,
+        winAmount: quizData.winAmount,
         answer: resp.data.answer,
         isCorrect: resp.data.answer === body.answer.trim(),
       };
@@ -184,6 +193,109 @@ export class QuizService {
       }
 
       return resp.data;
+    } catch (error) {
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
+    }
+  }
+
+  async getRankedUser() {
+    try {
+      const todayStart = startOfDay(new Date());
+      const todayEnd = endOfDay(new Date());
+      console.log('todayStart: ', todayStart, todayEnd);
+
+      const pipeline = [];
+      pipeline.push({
+        $match: {
+          createdAt: { $gte: todayStart, $lt: todayEnd },
+          status: Status.COMPLETED,
+        },
+      });
+
+      pipeline.push({
+        $sort: {
+          winAmount: -1,
+        },
+      });
+
+      pipeline.push({
+        $limit: 10,
+      });
+
+      const users = await this.quizModel.aggregate(pipeline);
+      console.log('users: ', users);
+
+      const id = users.map((u) => u.userId);
+      const resp = await firstValueFrom(
+        this.userClient.send(GET_SELECTED_USER_BY_ID, { id }),
+      );
+
+      const data = [];
+      users.forEach((user) => {
+        console.log('user: ', user);
+        data.push({
+          name: resp.data.find((usr) => usr.id === user.userId).firstName,
+          winAmount: user.winAmount,
+          currentLevel: user.currentLevel,
+        });
+      });
+      return data;
+    } catch (error) {
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
+    }
+  }
+
+  async myQuiz(
+    body: {
+      page: number;
+      limit: number;
+      search: string;
+      skip: number;
+    },
+    user: any,
+  ) {
+    console.log('body: ', body);
+    try {
+      const limit = body.limit ? Number(body.limit) : 10;
+      const page = body.page ? Number(body.page) : 1;
+      const skip = (page - 1) * limit;
+
+      const query = [];
+
+      query.push({
+        $match: {
+          userId: user.id,
+        },
+      });
+
+      query.push({
+        $sort: {
+          createdAt: -1,
+        },
+      });
+
+      query.push({
+        $facet: {
+          quiz: [{ $skip: skip }, { $limit: limit }],
+          total_records: [{ $count: 'count' }],
+        },
+      });
+
+      const data = await this.quizModel.aggregate(query);
+      console.log('data: ', data);
+      if (data.length) {
+        data[0].total_records =
+          data[0].total_records.length > 0 ? data[0].total_records[0].count : 0;
+      }
+      return data[0];
     } catch (error) {
       if (error) {
         throw error;
