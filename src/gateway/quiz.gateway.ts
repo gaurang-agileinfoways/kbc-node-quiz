@@ -88,4 +88,16 @@ export class QuizGateway
       QuizGateway.userTimers.delete(clientId);
     }
   }
+
+  @SubscribeMessage('quit-quiz')
+  async quitQuiz(client: Socket) {
+    const quit: any = await this.quizService.quitQuiz(client?.data?.user);
+
+    this.server.to(client.id).emit('win', JSON.stringify(quit));
+
+    const timer = setTimeout(() => {
+      this.handleTimeout(client);
+    }, 1000 * 60);
+    QuizGateway.userTimers.set(client.id, timer);
+  }
 }

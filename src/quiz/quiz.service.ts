@@ -23,7 +23,7 @@ export class QuizService {
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
   ) {}
 
-  async startQuiz(userId) {
+  async startQuiz(userId: number) {
     try {
       const dbuser = await this.verifyUser(userId);
 
@@ -128,7 +128,9 @@ export class QuizService {
 
       if (storeData.currentLevel === 4) {
         storeData['winAmount'] = 1000;
-      } else if (storeData.currentLevel > 4) {
+      } else if (storeData.currentLevel === 7) {
+        storeData['winAmount'] = 1000000;
+      } else if (storeData.currentLevel >= 8) {
         storeData['winAmount'] = data.winAmount * 10;
       }
 
@@ -290,6 +292,46 @@ export class QuizService {
           data[0].total_records.length > 0 ? data[0].total_records[0].count : 0;
       }
       return data[0];
+    } catch (error) {
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
+    }
+  }
+
+  async quitQuiz(user: any) {
+    try {
+      const dbuser = await this.verifyUser(user.id);
+      if (!dbuser) {
+        throw new WsException('user not found');
+      }
+
+      const data = await this.quizModel.findOne({
+        userId: dbuser.id,
+        status: Status.ACTIVE,
+      });
+
+      if (!data) {
+        throw new WsException('No any active quiz found.');
+      }
+
+      const quizData = await this.quizModel.findOneAndUpdate(
+        {
+          _id: data._id,
+          userId: dbuser.id,
+          status: Status.ACTIVE,
+        },
+        {
+          status: Status.COMPLETED,
+        },
+      );
+
+      return {
+        currentLevel: quizData.currentLevel + 1,
+        winAmount: quizData.winAmount,
+      };
     } catch (error) {
       if (error) {
         throw error;
