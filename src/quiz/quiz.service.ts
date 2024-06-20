@@ -75,7 +75,6 @@ export class QuizService {
       }
 
       const questions = validate.questions.map((que) => que.questionId);
-      console.log('askedQuestions: ', questions);
 
       const resp = await firstValueFrom(
         this.queClient.send(GET_RANDOM_QUESTION, { questions }),
@@ -206,7 +205,6 @@ export class QuizService {
     try {
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
-      console.log('todayStart: ', todayStart, todayEnd);
 
       const pipeline = [];
       pipeline.push({
@@ -227,7 +225,6 @@ export class QuizService {
       });
 
       const users = await this.quizModel.aggregate(pipeline);
-      console.log('users: ', users);
 
       const id = users.map((u) => u.userId);
       const resp = await firstValueFrom(
@@ -236,7 +233,6 @@ export class QuizService {
 
       const data = [];
       users.forEach((user) => {
-        console.log('user: ', user);
         data.push({
           name: resp.data.find((usr) => usr.id === user.userId).firstName,
           winAmount: user.winAmount,
@@ -262,7 +258,6 @@ export class QuizService {
     },
     user: any,
   ) {
-    console.log('body: ', body);
     try {
       const limit = body.limit ? Number(body.limit) : 10;
       const page = body.page ? Number(body.page) : 1;
@@ -290,7 +285,6 @@ export class QuizService {
       });
 
       const data = await this.quizModel.aggregate(query);
-      console.log('data: ', data);
       if (data.length) {
         data[0].total_records =
           data[0].total_records.length > 0 ? data[0].total_records[0].count : 0;

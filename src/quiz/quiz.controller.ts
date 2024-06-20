@@ -31,7 +31,6 @@ export class QuizController {
   @MessagePattern(MY_QUIZ)
   @ResponseMessage(RESPONSE_SUCCESS)
   async myQuiz(@Payload() body) {
-    console.log('body: ', body);
     return await this.quizService.myQuiz(body.body, body.user);
   }
 }

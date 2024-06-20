@@ -25,7 +25,6 @@ export class QuizGateway
   private static userTimers: Map<string, NodeJS.Timeout> = new Map();
 
   afterInit(server: Server) {
-    console.log('WebSocket server initialized');
     try {
       server.use(SocketAuthMiddleware());
     } catch (error) {
@@ -33,8 +32,8 @@ export class QuizGateway
     }
   }
 
-  handleConnection(client: Socket, ...args: any[]) {
-    console.log('Client connected:', client.id, args);
+  handleConnection(client: Socket) {
+    console.log('Client connected:', client.id);
   }
 
   handleDisconnect(client: Socket) {
@@ -43,7 +42,6 @@ export class QuizGateway
 
   @SubscribeMessage('get-question')
   async assignQuestions(client: Socket) {
-    console.log('get-question: 1');
     const question: any = await this.quizService.generateQuestion(
       client?.data?.user,
     );
@@ -58,7 +56,6 @@ export class QuizGateway
 
   @SubscribeMessage('submit-answer')
   async submitAnswer(client: Socket, payload: any) {
-    console.log('payload: ', payload);
     const answer: any = await this.quizService.checkAnswer(
       payload,
       client?.data?.user,
