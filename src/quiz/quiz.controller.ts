@@ -3,6 +3,7 @@ import { QuizService } from './quiz.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import {
   GET_RANKED_USER,
+  LEADERBOARD,
   MY_QUIZ,
   START_QUIZ,
 } from 'src/common/constants/message-pattern.constant';
@@ -32,5 +33,11 @@ export class QuizController {
   @ResponseMessage(RESPONSE_SUCCESS)
   async myQuiz(@Payload() body) {
     return await this.quizService.myQuiz(body.body, body.user);
+  }
+
+  @MessagePattern(LEADERBOARD)
+  @ResponseMessage(RESPONSE_SUCCESS)
+  async leaderboard(@Payload() body) {
+    return await this.quizService.leaderboard(body);
   }
 }

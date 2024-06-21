@@ -87,7 +87,6 @@ export class QuizService {
         time: 60,
       };
     } catch (error) {
-      console.log('error: ', error);
       throw error;
     }
   }
@@ -217,8 +216,23 @@ export class QuizService {
       });
 
       pipeline.push({
+        $addFields: {
+          timeGap: {
+            $subtract: ['$updatedAt', '$createdAt'],
+          },
+        },
+      });
+
+      pipeline.push({
         $sort: {
+          timeGap: 1,
           winAmount: -1,
+        },
+      });
+
+      pipeline.push({
+        $sort: {
+          currentLevel: -1,
         },
       });
 
@@ -239,6 +253,7 @@ export class QuizService {
           name: resp.data.find((usr) => usr.id === user.userId).firstName,
           winAmount: user.winAmount,
           currentLevel: user.currentLevel,
+          timeGap: user.timeGap,
         });
       });
       return data;
@@ -281,7 +296,7 @@ export class QuizService {
 
       query.push({
         $facet: {
-          quiz: [{ $skip: skip }, { $limit: limit }],
+          data: [{ $skip: skip }, { $limit: limit }],
           total_records: [{ $count: 'count' }],
         },
       });
@@ -332,6 +347,78 @@ export class QuizService {
         currentLevel: quizData.currentLevel + 1,
         winAmount: quizData.winAmount,
       };
+    } catch (error) {
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
+    }
+  }
+
+  async leaderboard(body: {
+    page: number;
+    limit: number;
+    search: string;
+    skip: number;
+  }) {
+    try {
+      const limit = body.limit ? Number(body.limit) : 10;
+      const page = body.page ? Number(body.page) : 1;
+      const skip = (page - 1) * limit;
+
+      const pipeline = [];
+
+      pipeline.push({
+        $addFields: {
+          timeGap: {
+            $subtract: ['$updatedAt', '$createdAt'],
+          },
+        },
+      });
+
+      pipeline.push({
+        $sort: {
+          timeGap: 1,
+          updatedAt: -1,
+          winAmount: -1,
+        },
+      });
+
+      pipeline.push({
+        $sort: {
+          currentLevel: -1,
+        },
+      });
+
+      pipeline.push({
+        $facet: {
+          quiz: [{ $skip: skip }, { $limit: limit }],
+          total_records: [{ $count: 'count' }],
+        },
+      });
+
+      const data = await this.quizModel.aggregate(pipeline);
+
+      const id = data[0].quiz.map((u) => u.userId);
+      const resp = await firstValueFrom(
+        this.userClient.send(GET_SELECTED_USER_BY_ID, { id }),
+      );
+
+      const response = {
+        data: [],
+        total_records: data[0].total_records[0].count || 0,
+      };
+      data[0].quiz.forEach((user) => {
+        response.data.push({
+          name: resp.data.find((usr) => usr.id === user.userId).firstName,
+          winAmount: user.winAmount,
+          currentLevel: user.currentLevel,
+          timeGap: user.timeGap,
+          status: user.status,
+        });
+      });
+      return response;
     } catch (error) {
       if (error) {
         throw error;
