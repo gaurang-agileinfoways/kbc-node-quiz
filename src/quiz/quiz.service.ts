@@ -14,6 +14,7 @@ import {
 } from 'src/common/constants/success-response.constant';
 import { WsException } from '@nestjs/websockets';
 import { endOfDay, startOfDay } from 'date-fns';
+import { randomInt } from 'crypto';
 
 @Injectable()
 export class QuizService {
@@ -87,7 +88,11 @@ export class QuizService {
         time: 60,
       };
     } catch (error) {
-      throw error;
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
     }
   }
 
@@ -347,6 +352,41 @@ export class QuizService {
         currentLevel: quizData.currentLevel + 1,
         winAmount: quizData.winAmount,
       };
+    } catch (error) {
+      if (error) {
+        throw error;
+      } else {
+        throw CustomError.UnknownError(error?.message);
+      }
+    }
+  }
+
+  async lifeline(user: any, body: any) {
+    try {
+      const dbuser = await this.verifyUser(user.id);
+      if (!dbuser) {
+        throw new WsException('user not found');
+      }
+
+      const resp = await firstValueFrom(
+        this.queClient.send(GET_SINGLE_QUESTION, { _id: body.questionId }),
+      );
+
+      const int = randomInt(0, 3);
+
+      const answer: string[] = [];
+      if (body.lifeline === 'askToAi') {
+        answer.push(resp.data.options[int]);
+      }
+
+      if (body.lifeline === '50-50') {
+        resp.data.options[int] !== resp.data.answer
+          ? answer.push(resp.data.options[int])
+          : answer.push(resp.data.options[int + 1 >= 4 ? int - 1 : int + 1]);
+        answer.push(resp.data.answer);
+      }
+
+      return { answer, lifeline: body.lifeline };
     } catch (error) {
       if (error) {
         throw error;

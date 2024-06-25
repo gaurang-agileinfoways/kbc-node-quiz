@@ -61,23 +61,21 @@ export class QuizGateway
       client?.data?.user,
     );
 
-    if (!answer.isCorrect) {
-      this.server.to(client.id).emit('answer', JSON.stringify(answer));
-      this.clearUserTimer(client.id);
-      client.disconnect(true);
-    }
-
     this.clearUserTimer(client.id);
     this.server.to(client.id).emit('answer', JSON.stringify(answer));
 
     if (answer.currentLevel >= 10) {
       this.server.to(client.id).emit('win', JSON.stringify(answer));
     }
+
+    if (!answer.isCorrect || answer.currentLevel >= 10) {
+      client.disconnect(true);
+    }
   }
 
   private handleTimeout(client: Socket) {
     this.quizService.updateQuizStatus(client);
-    this.server.to(client.id).emit('error', 'YOur time is out brother!!');
+    this.server.to(client.id).emit('error', 'Your time is out brother!!');
     client.disconnect(true);
   }
 
@@ -89,15 +87,20 @@ export class QuizGateway
     }
   }
 
+  @SubscribeMessage('lifeline')
+  async lifeline(client: Socket, payload: any) {
+    const lifeline = await this.quizService.lifeline(
+      client?.data?.user,
+      payload,
+    );
+    this.server.to(client.id).emit('lifeline', JSON.stringify(lifeline));
+  }
+
   @SubscribeMessage('quit-quiz')
   async quitQuiz(client: Socket) {
-    const quit: any = await this.quizService.quitQuiz(client?.data?.user);
+    const quit = await this.quizService.quitQuiz(client?.data?.user);
 
     this.server.to(client.id).emit('win', JSON.stringify(quit));
-
-    const timer = setTimeout(() => {
-      this.handleTimeout(client);
-    }, 1000 * 60);
-    QuizGateway.userTimers.set(client.id, timer);
+    QuizGateway.userTimers.delete(client.id);
   }
 }
