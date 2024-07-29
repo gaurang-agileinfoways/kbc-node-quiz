@@ -13,16 +13,16 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'QUESTION_SERVICE',
         transport: Transport.REDIS,
         options: {
-          host: 'localhost',
-          port: 6379,
+          host: `${process.env.REDIS_HOST}`,
+          port: Number(process.env.REDIS_PORT),
         },
       },
       {
         name: 'USER_SERVICE',
         transport: Transport.REDIS,
         options: {
-          host: 'localhost',
-          port: 6379,
+          host: `${process.env.REDIS_HOST}`,
+          port: Number(process.env.REDIS_PORT),
         },
       },
     ]),

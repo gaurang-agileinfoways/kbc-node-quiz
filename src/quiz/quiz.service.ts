@@ -380,9 +380,10 @@ export class QuizService {
       }
 
       if (body.lifeline === '50-50') {
+        const index = int + 1 >= 4 ? int - 1 : int + 1;
         resp.data.options[int] !== resp.data.answer
           ? answer.push(resp.data.options[int])
-          : answer.push(resp.data.options[int + 1 >= 4 ? int - 1 : int + 1]);
+          : answer.push(resp.data.options[index]);
         answer.push(resp.data.answer);
       }
 
