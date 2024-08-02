@@ -1,7 +1,7 @@
 FROM node:current
 WORKDIR /usr/src/app/
 
-COPY quiz/package*.json /usr/src/app/
+COPY quiz/package*.json .
 
 RUN npm install
 
@@ -9,4 +9,6 @@ COPY quiz/. .
 
 RUN npm run build
 
-CMD ["npm", "run", "start"]
+EXPOSE 3000
+
+CMD ["npm", "run", "start:prod"]

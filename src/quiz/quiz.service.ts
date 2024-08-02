@@ -448,7 +448,7 @@ export class QuizService {
 
       const response = {
         data: [],
-        total_records: data[0].total_records[0].count || 0,
+        total_records: data[0]?.total_records[0]?.count || 0,
       };
       data[0].quiz.forEach((user) => {
         response.data.push({

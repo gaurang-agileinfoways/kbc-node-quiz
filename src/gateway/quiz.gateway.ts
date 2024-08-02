@@ -10,7 +10,7 @@ import { Server, Socket } from 'socket.io';
 import { QuizService } from 'src/quiz/quiz.service';
 import { SocketAuthMiddleware } from './ws.middleware';
 
-@WebSocketGateway(3001, {
+@WebSocketGateway(3000, {
   cors: {
     origin: '*',
   },
